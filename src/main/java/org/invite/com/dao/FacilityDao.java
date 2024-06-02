@@ -3,6 +3,8 @@ package org.invite.com.dao;
 import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import org.invite.com.model.Facility;
 import org.invite.com.utility.Constants;
 import org.slf4j.Logger;
@@ -52,6 +54,26 @@ public class FacilityDao {
             logger.error(Constants.ERROR_LOG_TEMPLATE, Constants.ERROR, ex.getClass().getSimpleName(), ex.getMessage());
         }
         return facilityId;
+    }
+
+    public JsonObject getFacilityCategories(int structureId){
+        String query="SELECT category, number_of_firms FROM facilities WHERE structure_id=?";
+        var categories= Json.createArrayBuilder();
+        var categoryJson=Json.createObjectBuilder();
+        try (Connection connection = ads.getConnection(); PreparedStatement preparedStatement= connection.prepareStatement(query)) {
+            preparedStatement.setInt(1, structureId);
+            ResultSet resultSet=preparedStatement.executeQuery();
+
+            while (resultSet.next()){
+               var category=Json.createObjectBuilder()
+                       .add("category", resultSet.getString(1))
+                       .add("numberOfFirms", resultSet.getInt(2));
+               categories.add(category);
+            }
+        } catch (SQLException ex) {
+            logger.error(Constants.ERROR_LOG_TEMPLATE, Constants.ERROR, ex.getClass().getSimpleName(), ex.getMessage());
+        }
+        return categoryJson.add("categories", categories).build();
     }
 
 }

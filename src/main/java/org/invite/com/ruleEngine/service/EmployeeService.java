@@ -30,4 +30,25 @@ public class EmployeeService {
                 ? new ServiceResponder(true, "invite access granted successfully")
                 : new ServiceResponder(false, "cannot grant invite access");
     }
+    public ServiceResponder deactivateEmployee(JsonObject object){
+        int employeeId= object.getInt("employeeId", 0);
+        boolean isDeactivated= employeeDao.deactivateEmployee(employeeId);
+        return (isDeactivated)
+                ? new ServiceResponder(true, "employee deactivated successfully")
+                : new ServiceResponder(false, "cannot deactivate employee");
+    }
+    public ServiceResponder getFirmEmployees(JsonObject object){
+        int firmId= object.getInt("firmId");
+        JsonObject employees=employeeDao.getFirmEmployees(firmId);
+        return (!employees.isEmpty())
+                ? new ServiceResponder(true, employees)
+                : new ServiceResponder(false, "cannot get employees");
+    }
+    public ServiceResponder getFirmEmployeesWithInviteRules(JsonObject object){
+        int firmId= object.getInt("firmId");
+        JsonObject employees=employeeDao.getFirmEmployeesWithInviteRight(firmId);
+        return (!employees.isEmpty())
+                ? new ServiceResponder(true, employees)
+                : new ServiceResponder(false, "cannot get employees");
+    }
 }

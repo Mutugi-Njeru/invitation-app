@@ -57,6 +57,20 @@ public class CheckInGateDao {
         }
         return entryId;
     }
+    public boolean updateGateTimeOut(String timeOut, int outId){
+        String query="UPDATE check_in_and_out SET time_out=?, status=? WHERE in_and_out_id=?";
+        boolean isUpdated=false;
+        try (Connection connection = ads.getConnection(); PreparedStatement preparedStatement= connection.prepareStatement(query)) {
+            preparedStatement.setTimestamp(1, Timestamp.valueOf(timeOut));
+            preparedStatement.setString(2, "checkedOut");
+            preparedStatement.setInt(3, outId);
+            isUpdated=preparedStatement.executeUpdate()>0;
+
+        } catch (SQLException ex) {
+            logger.error(Constants.ERROR_LOG_TEMPLATE, Constants.ERROR, ex.getClass().getSimpleName(), ex.getMessage());
+        }
+        return isUpdated;
+    }
     public boolean updateApproveRejectInvitationToCheckedIn(int approvedId){
         String query="UPDATE approve_reject_invitations SET gate_check_in=? WHERE apinv_id=?";
         boolean status=false;

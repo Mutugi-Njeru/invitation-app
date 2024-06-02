@@ -3,6 +3,9 @@ package org.invite.com.dao;
 import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import netscape.javascript.JSObject;
 import org.invite.com.model.Firm;
 import org.invite.com.utility.Constants;
 import org.slf4j.Logger;
@@ -34,7 +37,7 @@ public class FirmDao {
     }
 
     public int createFirm(Firm firm){
-        String query="INSERT INTO firms(category_id, security_firm_id, business_name, business_nature, registration_pin) VALUES (?,?,?,?,?)";
+        String query="INSERT INTO firms(category_id, security_firm_id, business_name, business_nature, registration_pin, is_active) VALUES (?,?,?,?,?,?)";
         int firmId=0;
         try (Connection connection = ads.getConnection(); PreparedStatement preparedStatement= connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setInt(1, firm.categoryId());
@@ -42,6 +45,7 @@ public class FirmDao {
             preparedStatement.setString(3, firm.businessName());
             preparedStatement.setString(4, firm.businessNature());
             preparedStatement.setString(5, firm.registrationPin());
+            preparedStatement.setBoolean(6, true);
             preparedStatement.executeUpdate();
 
             ResultSet resultSet=preparedStatement.getGeneratedKeys();
@@ -75,7 +79,7 @@ public class FirmDao {
         }
         return contactId;
     }
-    //get firm id by employeeId
+
     public int getFirmIdByEmployeeId(int employeeId){
         String query="SELECT firm_id FROM employees WHERE employee_id=?";
         int firmId=0;
@@ -92,4 +96,47 @@ public class FirmDao {
         }
         return firmId;
     }
+    public JsonObject getFirmsInAStructure(int structureId){
+        String query= """
+                SELECT f.firm_id, f.business_name, f.business_nature, fc.category, sf.firm_name as security_firm
+                FROM firms f
+                INNER JOIN facilities fc ON fc.category_id=f.category_id
+                INNER JOIN structures s ON fc.structure_id=s.structure_id
+                INNER JOIN security_firm sf ON sf.structure_id=s.structure_id
+                WHERE s.structure_id=?
+                """;
+        var firms= Json.createArrayBuilder();
+        var firmsJson=Json.createObjectBuilder();
+        try (Connection connection = ads.getConnection(); PreparedStatement preparedStatement= connection.prepareStatement(query)) {
+            preparedStatement.setInt(1, structureId);
+            ResultSet resultSet=preparedStatement.executeQuery();
+            while (resultSet.next()){
+                var firm=Json.createObjectBuilder()
+                        .add("firmId", resultSet.getInt(1))
+                        .add("businessName", resultSet.getString(2))
+                        .add("businessNature", resultSet.getString(3))
+                        .add("category", resultSet.getString(4))
+                        .add("securityFirm", resultSet.getString(5));
+                firms.add(firm);
+            }
+        } catch (SQLException ex) {
+            logger.error(Constants.ERROR_LOG_TEMPLATE, Constants.ERROR, ex.getClass().getSimpleName(), ex.getMessage());
+        }
+        return firmsJson.add("firms", firms).build();
+    }
+    //deactivate firm
+    public boolean deactivateFirm(int firmId){
+        String query="UPDATE firms SET is_active=? WHERE firm_id=?";
+        boolean status=false;
+        try (Connection connection = ads.getConnection(); PreparedStatement preparedStatement= connection.prepareStatement(query)) {
+            preparedStatement.setBoolean(1, false);
+            preparedStatement.setInt(2, firmId);
+            status=preparedStatement.executeUpdate()>0;
+
+        } catch (SQLException ex) {
+            logger.error(Constants.ERROR_LOG_TEMPLATE, Constants.ERROR, ex.getClass().getSimpleName(), ex.getMessage());
+        }
+        return status;
+    }
+
 }
